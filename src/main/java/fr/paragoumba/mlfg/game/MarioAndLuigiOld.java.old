@@ -1,0 +1,132 @@
+package fr.paragoumba.mlfg.game;
+
+import main.java.fr.paragoumba.mlfg.panels.GamePanel;
+import main.java.fr.paragoumba.mlfg.panels.MenuPanel;
+import main.java.fr.paragoumba.mlfg.panels.StartPanel;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.WindowEvent;
+import java.util.Arrays;
+
+public class MarioAndLuigiOld implements Runnable {
+
+    private static String gameTitle = "Mario & Luigi - Fan Game";
+
+    private static Thread displayThread = new Thread(new MarioAndLuigiOld(), "Thread - Display");
+    private static JFrame window = new JFrame(gameTitle);
+
+    private static JPanel[] panels = new JPanel[0];
+
+    private static final int START_PANEL = registerPanel(new StartPanel());
+    private static final int MENU_PANEL = registerPanel(new MenuPanel());
+    private static final int GAME_PANEL = registerPanel(new GamePanel());
+
+    private static boolean running = true;
+    static boolean waiting = true;
+
+    private static int displayedPanel = START_PANEL;
+    private static int targetFPS = 60;
+
+    public static void main(String[] args) {
+
+        window.addKeyListener(new InputHandler());
+
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+
+        window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        window.setLocationRelativeTo(null);
+        window.setPreferredSize(screenSize);
+        window.setExtendedState(Frame.MAXIMIZED_BOTH);
+        window.setContentPane(panels[displayedPanel = START_PANEL]);
+        window.addWindowStateListener((e) -> {
+
+            if (e.getNewState() == WindowEvent.WINDOW_CLOSING) running = false;
+
+        });
+        window.pack();
+        window.setVisible(true);
+
+        displayThread.start();
+
+        waitUntilInput();
+
+        window.setContentPane(panels[displayedPanel = MENU_PANEL]);
+        window.pack();
+
+    }
+
+    @Override
+    public void run() {
+
+        int i = 0;
+        double sum = 0;
+
+        while (running) {
+
+            long start = System.currentTimeMillis();
+            double targetTime = 1e3 / targetFPS;
+
+            /* Draw graphics */
+            panels[displayedPanel].repaint();
+
+            long elapsed = System.currentTimeMillis() - start;
+            double wait = targetTime - elapsed;
+
+            if (wait < 0) wait = targetTime;
+
+            try {
+
+                Thread.sleep(Math.round(wait));
+
+                sum += 1d / (System.currentTimeMillis() - start) * 1000;
+
+            } catch (InterruptedException e) {
+
+                e.printStackTrace();
+
+            }
+
+            ++i;
+
+            if (i == 59){
+
+                double average = sum / 60;
+                sum = 0;
+
+                window.setTitle(gameTitle + " " + (average - average % 0.01));
+
+            }
+        }
+    }
+
+    private static int registerPanel(JPanel panel){
+
+        for (int i = 0; i < panels.length; ++i) if (panels[i] == panel) return i;
+
+        panels = Arrays.copyOf(panels, panels.length + 1);
+        panels[panels.length - 1] = panel;
+
+        return panels.length - 1;
+
+    }
+
+    private static void waitUntilInput(){
+
+        while (waiting){
+
+            try {
+
+                Thread.sleep(1);
+
+            } catch (InterruptedException e) {
+
+                e.printStackTrace();
+
+            }
+        }
+
+        waiting = true;
+
+    }
+}
